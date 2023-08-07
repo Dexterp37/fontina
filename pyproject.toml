@@ -1,0 +1,22 @@
+[project]
+name = "fontina"
+version = "0.0.1"
+description = "Visual font recognition (VFR) library"
+authors = [
+    {name = "Alessio Placitelli", email = "a.placitelli@a2p.it"},
+]
+dependencies = []
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.dev-dependencies]
+lint = [
+    "flake8",
+    "black"
+]
+test = ["pytest"]
