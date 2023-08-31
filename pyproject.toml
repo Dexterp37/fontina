@@ -2,21 +2,41 @@
 name = "fontina"
 version = "0.0.1"
 description = "Visual font recognition (VFR) library"
-authors = [
-    {name = "Alessio Placitelli", email = "a.placitelli@a2p.it"},
+authors = [{ name = "Alessio Placitelli", email = "a.placitelli@a2p.it" }]
+dependencies = [
+    "trdg==1.8.0",
+    # We need to force the pillow version because of the use
+    # of removed APIs in trdg 1.8.0 (e.g. `ImageFont.getsize`).
+    "pillow==9.5.0",
+    "pyyaml==6.0.1",
+    "rstr==3.2.1",
 ]
-dependencies = []
 requires-python = ">=3.10"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.pdm.dev-dependencies]
-lint = [
-    "flake8",
-    "black"
+[project.optional-dependencies]
+linting = [
+    "black==23.7.0",
+    "flake8==6.1.0",
+    "flake8-bugbear==23.7.10",
+    "mypy==1.4.1",
+    "pytest==7.4.0",
+    "types-PyYAML",
 ]
-test = ["pytest"]
+
+[tool.black]
+line-length = 90
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[[tool.mypy.overrides]]
+module = "trdg.generators.*"
+ignore_missing_imports = true

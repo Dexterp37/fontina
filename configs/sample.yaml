@@ -1,0 +1,13 @@
+---
+#TODO: for data generation
+fonts:
+  # The regular expression to use to generate the text
+  # in the synthetic image samples.
+  regex_template: '[A-Z0-9]{5,10} [A-Z0-9]{3,7}'
+  # The number of samples to generate for each font.
+  samples_per_font: 50
+  classes:
+    - name: Test Font
+      path: "../test/Test.ttf"
+    - name: Other Test Font
+      path: "../test/Test2.ttf"
