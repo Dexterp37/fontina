@@ -120,7 +120,6 @@ def main():
 
     config = load_config(args.config)
 
-    # TODO: Find a way to generate randomly characters spaced images.
     fonts_config = config["fonts"]
     for f in fonts_config["classes"]:
         print(f"Generating font data for {f['path']}")
