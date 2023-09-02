@@ -1,6 +1,8 @@
 ---
 #TODO: for data generation
 fonts:
+  # Whether or not to enable random spacing between characters.
+  random_character_spacing: False
   # The regular expression to use to generate the text
   # in the synthetic image samples.
   regex_template: '[A-Z0-9]{5,10} [A-Z0-9]{3,7}'

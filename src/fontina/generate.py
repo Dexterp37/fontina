@@ -1,4 +1,5 @@
 import argparse
+import random
 import rstr
 
 from pathlib import Path, PurePath
@@ -9,27 +10,38 @@ from trdg.generators import GeneratorFromRandom, GeneratorFromStrings
 from fontina.config import load_config
 
 
-class GeneratorFromRegex:
-    def __init__(self, regex_template: str, count: int, **kwargs):
-        self.regex_template = regex_template
-        self.generator = GeneratorFromStrings(
-            count=count, strings=self._random_strings(count), **kwargs
+class GeneratorFromRegex(GeneratorFromStrings):
+    def __init__(
+        self, regex_template: str, count: int, random_character_spacing: bool, **kwargs
+    ):
+        super().__init__(
+            count=count,
+            strings=self._random_strings(
+                count,
+                regex_template,
+            ),
+            **kwargs,
         )
+        self.random_character_spacing = random_character_spacing
 
-    def _random_strings(self, num_to_generate):
-        return [rstr.xeger(self.regex_template) for _ in range(0, num_to_generate)]
+    def _random_strings(self, num_to_generate: int, regex_template: str):
+        return [rstr.xeger(regex_template) for _ in range(0, num_to_generate)]
 
-    def __iter__(self):
-        return self.generator
+    def _clamp(self, x, range_min, range_max):
+        return max(range_min, min(x, range_max))
 
     def __next__(self):
-        return self.generator.next()
+        if self.random_character_spacing:
+            raw_spacing = random.gauss(10, 40)
+            self.character_spacing = round(self._clamp(raw_spacing, 0, 50))
+        return self.next()
 
 
 def generate_font_data(
     output_dir: PurePath,
     num_samples: int,
     font_path: PurePath,
+    random_character_spacing: bool,
     backgrounds_path: Optional[PurePath],
     regex_template: Optional[str],
 ):
@@ -38,6 +50,7 @@ def generate_font_data(
         GeneratorFromRegex(
             count=num_samples,
             regex_template=regex_template,
+            random_character_spacing=random_character_spacing,
             fonts=[str(font_path)],
             # This size maps to the height of the images.
             size=105,
@@ -118,6 +131,7 @@ def main():
             backgrounds_path=PurePath(fonts_config["backgrounds_path"])
             if fonts_config["backgrounds_path"]
             else None,
+            random_character_spacing=fonts_config["random_character_spacing"],
             regex_template=fonts_config["regex_template"],
         )
 
