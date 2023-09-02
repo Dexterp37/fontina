@@ -129,7 +129,7 @@ def main():
             num_samples=fonts_config["samples_per_font"],
             font_path=PurePath(f["path"]),
             backgrounds_path=PurePath(fonts_config["backgrounds_path"])
-            if fonts_config["backgrounds_path"]
+            if "backgrounds_path" in fonts_config
             else None,
             random_character_spacing=fonts_config["random_character_spacing"],
             regex_template=fonts_config["regex_template"],
