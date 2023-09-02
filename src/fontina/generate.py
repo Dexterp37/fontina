@@ -30,6 +30,7 @@ def generate_font_data(
     output_dir: PurePath,
     num_samples: int,
     font_path: PurePath,
+    backgrounds_path: Optional[PurePath],
     regex_template: Optional[str],
 ):
     # TODO: we have to generate the samples from the same strings.
@@ -40,8 +41,10 @@ def generate_font_data(
             fonts=[str(font_path)],
             # This size maps to the height of the images.
             size=105,
-            # Background == 1 means plain white.
-            background_type=1,
+            # Background == 1 means plain white and is the default
+            # if no background images are provided.
+            background_type=1 if not backgrounds_path else None,
+            image_dir=backgrounds_path if backgrounds_path else None,
             fit=True,
         )
         if regex_template
@@ -52,8 +55,10 @@ def generate_font_data(
             fonts=[str(font_path)],
             # This size maps to the height of the images.
             size=105,
-            # Background == 1 means plain white.
-            background_type=1,
+            # Background == 1 means plain white and is the default
+            # if no background images are provided.
+            background_type=1 if not backgrounds_path else None,
+            image_dir=backgrounds_path if backgrounds_path else None,
             fit=True,
         )
     )
@@ -103,13 +108,17 @@ def main():
     config = load_config(args.config)
 
     # TODO: Find a way to generate randomly characters spaced images.
-    for f in config["fonts"]["classes"]:
+    fonts_config = config["fonts"]
+    for f in fonts_config["classes"]:
         print(f"Generating font data for {f['path']}")
         generate_font_data(
             output_dir=PurePath(args.outdir),
-            num_samples=config["fonts"]["samples_per_font"],
+            num_samples=fonts_config["samples_per_font"],
             font_path=PurePath(f["path"]),
-            regex_template=config["fonts"]["regex_template"],
+            backgrounds_path=PurePath(fonts_config["backgrounds_path"])
+            if fonts_config["backgrounds_path"]
+            else None,
+            regex_template=fonts_config["regex_template"],
         )
 
 

@@ -4,6 +4,11 @@ fonts:
   # The regular expression to use to generate the text
   # in the synthetic image samples.
   regex_template: '[A-Z0-9]{5,10} [A-Z0-9]{3,7}'
+  # The path to the directory containing background images.
+  # If provided, images in this directory will be used as
+  # background for the generated text. If omitted, images
+  # will have a white background.
+  backgrounds_path: "../backgrounds"
   # The number of samples to generate for each font.
   samples_per_font: 50
   classes:
