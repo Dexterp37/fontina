@@ -1,20 +1,64 @@
 ---
-#TODO: for data generation
+# This section of the configuration is used to control
+# the generation of the synthetic image data for the
+# visual font recognition task.
 fonts:
   # Whether or not to enable random spacing between characters.
   random_character_spacing: False
+
   # The regular expression to use to generate the text
   # in the synthetic image samples.
   regex_template: '[A-Z0-9]{5,10} [A-Z0-9]{3,7}'
+
   # The path to the directory containing background images.
   # If provided, images in this directory will be used as
   # background for the generated text. If omitted, images
   # will have a white background.
-  backgrounds_path: "../backgrounds"
+  backgrounds_path: "assets/backgrounds"
+
   # The number of samples to generate for each font.
   samples_per_font: 50
+
   classes:
     - name: Test Font
-      path: "../test/Test.ttf"
+      path: "assets/fonts/test/Test.ttf"
     - name: Other Test Font
-      path: "../test/Test2.ttf"
+      path: "assets/fonts/test2/Test2.ttf"
+
+# This section controls the training configuration for the model.
+training:
+  only_autoencoder: False
+
+  # The path to the pre-trained checkpoint to use for the
+  # stacked autoencoders within the DeepFont-like model. Setting
+  # this property skip training the SCAE.
+  scae_checkpoint_file: "outputs/models/autoenc/good-checkpoint.ckpt"
+
+  # Whether or not to use a fixed random seed for training. Note
+  # that this is useful for creating reproducible runs for debugging
+  # purposes.
+  # fixed_seed: 42
+
+  # The root directory containing the data generated from the
+  # synthetic image generation step.
+  data_root: "outputs/font-images"
+
+  # The directory that will contain the model checkpoints.
+  output_dir: "outputs/models/"
+
+  # The number of workers to use for the data loaders. See
+  # the PyTorch documentation here:
+  # https://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader
+  num_workers: 12
+
+  # The size of the batch to use for training.
+  batch_size: 128
+
+  # The initial learning rate to use for training.
+  learning_rate: 0.01
+
+  epochs: 20
+
+  # Whether or not to use a fraction of the data to run a
+  # test cycle on the trained model.
+  run_test_cycle: True

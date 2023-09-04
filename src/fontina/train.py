@@ -1,7 +1,15 @@
 import argparse
+import pytorch_lightning as L
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+    ModelSummary,
+)
 import torch
 
 from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
 from fontina.augmentation_utils import (
     get_deepfont_full_augmentations,
     get_random_square_patch_augmentation,
@@ -9,6 +17,8 @@ from fontina.augmentation_utils import (
 from fontina.augmented_dataset import AugmentedDataset
 
 from fontina.config import load_config
+from fontina.models.deepfont import DeepFont, DeepFontAutoencoder
+from fontina.models.lightning_wrappers import DeepFontAutoencoderWrapper, DeepFontWrapper
 
 
 def get_parser():
@@ -20,13 +30,6 @@ def get_parser():
         help="path to the configuration file",
         required=True,
     )
-    parser.add_argument(
-        "-o",
-        "--outdir",
-        default="out-data",
-        metavar="OUTPUT-DIR",
-        help="path to the directory that will contain the outputs",
-    )
     return parser
 
 
@@ -36,6 +39,9 @@ def main():
     config = load_config(args.config)
 
     train_config = config["training"]
+
+    if "fixed_seed" in train_config:
+        L.seed_everything(train_config["fixed_seed"])
 
     all_data = datasets.ImageFolder(
         root=train_config["data_root"],
@@ -62,19 +68,82 @@ def main():
         val_set, full_data_num_classes, get_random_square_patch_augmentation()
     )
 
-    debug = True
-    if debug:
-        from torch.utils.data import DataLoader
+    batch_size = train_config["batch_size"]
+    num_workers = train_config["num_workers"] // 3
 
-        img, label = next(
-            iter(
-                DataLoader(train_set_processed, batch_size=1, num_workers=0, shuffle=True)
-            )
+    # num_workers must be 0 to avoid "process exited unexpectedly"
+    train_loader = DataLoader(
+        train_set_processed,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=True,
+        persistent_workers=True,
+        pin_memory=True,
+    )
+    test_loader = DataLoader(
+        test_set_processed,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
+        persistent_workers=True,
+    )
+    validation_loader = DataLoader(
+        validation_set_processed,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
+    )
+
+    # Try to make training a bit faster without sacrificing precision (as suggested
+    # by lightning AI).
+    torch.set_float32_matmul_precision("high")
+
+    train_autoencoder = train_config["only_autoencoder"]
+    model = None
+    if train_autoencoder:
+        model = DeepFontAutoencoderWrapper()
+    else:
+        # Load the trained autoencoder.
+        checkpoint = torch.load(train_config["scae_checkpoint_file"])
+        autoenc_model = DeepFontAutoencoder()
+
+        # update keys by dropping `autoencoder.`
+        autoenc_weights = checkpoint["state_dict"]
+        for key in list(autoenc_weights):
+            autoenc_weights[key.replace("autoencoder.", "")] = autoenc_weights.pop(key)
+
+        autoenc_model.load_state_dict(autoenc_weights)
+
+        model = DeepFontWrapper(
+            model=DeepFont(autoencoder=autoenc_model, num_classes=full_data_num_classes),
+            num_classes=full_data_num_classes,
+            learning_rate=train_config["learning_rate"],
         )
-        print(f"Label index: {label[0]}")
-        test = transforms.ToPILImage()(img[0])
-        print(img[0].shape)
-        test.save("test.png")
+
+    # train model
+    trainer = L.Trainer(
+        gradient_clip_algorithm="norm",
+        gradient_clip_val=1.0,
+        max_epochs=train_config["epochs"],
+        callbacks=[
+            EarlyStopping(monitor="val_loss", mode="min"),
+            LearningRateMonitor(logging_interval="step"),
+            ModelCheckpoint(
+                dirpath=train_config["output_dir"],
+                save_top_k=2,
+                monitor="val_loss",
+                filename="deepfont-{epoch:02d}-{val_loss:.4f}-{val_accuracy:.2f}",
+            ),
+            ModelSummary(-1),
+        ],
+    )
+    trainer.fit(
+        model=model, train_dataloaders=train_loader, val_dataloaders=validation_loader
+    )
+
+    # Test the model
+    if "run_test_cycle" in train_config and train_config["run_test_cycle"]:
+        trainer.test(model, test_loader)
 
 
 if __name__ == "__main__":

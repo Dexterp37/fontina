@@ -3,74 +3,99 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class DeepFontAutoencoder(nn.Module):
+    def __init__(self):
+        super(DeepFontAutoencoder, self).__init__()
+
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv2d(
+                in_channels=1, out_channels=64, kernel_size=12, stride=2, padding=1
+            ),
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
+            nn.MaxPool2d(2),
+            nn.Conv2d(
+                in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1
+            ),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.MaxPool2d(2),
+        )
+
+        # Decoder
+        self.decoder = nn.Sequential(
+            # See https://stackoverflow.com/a/58207809/261698
+            nn.Upsample(scale_factor=2, mode="bilinear"),
+            nn.ConvTranspose2d(
+                in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1
+            ),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode="bilinear"),
+            nn.ConvTranspose2d(
+                in_channels=64,
+                out_channels=1,
+                kernel_size=12,
+                stride=2,
+                padding=1,
+                output_padding=1,
+            ),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded
+
+
 class DeepFont(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, autoencoder: DeepFontAutoencoder, num_classes: int):
         super(DeepFont, self).__init__()
 
         # Cross-domain subnetwork layers (Cu)
-
-        # Input shape to this block [batch, 1, 105, 105].
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=48)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.pool1 = nn.MaxPool2d(2)
-
-        # Input shape to this block [batch, 64, 29, 29].
-        self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=24)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.pool2 = nn.MaxPool2d(2)
-
-        # Input shape to this block [batch, 128, 3, 3].
-        self.conv3 = nn.ConvTranspose2d(
-            in_channels=128, out_channels=128, kernel_size=24, stride=2, padding=11
-        )
-        self.up1 = nn.Upsample(scale_factor=2)
-
-        # Input shape to this block [batch, 128, 12, 12].
-        self.conv4 = torch.nn.ConvTranspose2d(
-            in_channels=128, out_channels=64, kernel_size=12, stride=2, padding=5
-        )
-        self.up2 = nn.Upsample(scale_factor=2)
+        # This is coming from the encoder.
+        self.ae_encoder = autoencoder.encoder
+        # Make sure we don't train the autoencoder again.
+        for param in self.ae_encoder.parameters():
+            param.requires_grad = False
 
         # Domain-specific layers (Cs)
-        self.conv5 = nn.Conv2d(in_channels=64, out_channels=256, kernel_size=12)
-        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=12)
-        self.conv7 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=12)
+        self.conv5 = nn.Conv2d(
+            in_channels=128, out_channels=256, kernel_size=3, padding=1
+        )
+        self.conv6 = nn.Conv2d(
+            in_channels=256, out_channels=256, kernel_size=3, padding=1
+        )
+        self.conv7 = nn.Conv2d(
+            in_channels=256, out_channels=256, kernel_size=3, padding=1
+        )
 
-        self.fc1 = nn.Linear(256 * 15 * 15, 4096)
+        self.flatten = nn.Flatten()
+
+        hidden_units = 4096
+        self.fc1 = nn.Linear(256 * 12 * 12, hidden_units)
         self.drop1 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(4096, 4096)
+        self.fc2 = nn.Linear(hidden_units, hidden_units)
         self.drop2 = nn.Dropout(0.5)
-        self.fc3 = nn.Linear(4096, 2383)
-        self.fc4 = nn.Linear(2383, num_classes)
+        self.fc3 = nn.Linear(hidden_units, num_classes)
 
     def forward(self, x):
         # Cu Layers
-        x = F.relu(self.conv1(x))
-        x = self.bn1(x)
-        x = self.pool1(x)
-
-        x = F.relu(self.conv2(x))
-        x = self.bn2(x)
-        x = self.pool2(x)
-
-        x = F.relu(self.conv3(x))
-        x = self.up1(x)
-
-        x = F.relu(self.conv4(x))
-        x = self.up2(x)
+        with torch.no_grad():
+            out = self.ae_encoder(x)
 
         # Cs Layers
-        x = F.relu(self.conv5(x))
-        x = F.relu(self.conv6(x))
-        x = F.relu(self.conv7(x))
+        out = F.relu(self.conv5(out))
+        out = F.relu(self.conv6(out))
+        out = F.relu(self.conv7(out))
 
-        x = x.view(-1, 256 * 15 * 15)
+        out = self.flatten(out)
 
-        x = F.relu(self.fc1(x))
-        x = self.drop1(x)
-        x = F.relu(self.fc2(x))
-        x = self.drop2(x)
-        x = F.relu(self.fc3(x))
-        x = F.softmax(self.fc4(x), dim=1)
+        out = F.relu(self.fc1(out))
+        out = self.drop1(out)
+        out = F.relu(self.fc2(out))
+        out = self.drop2(out)
+        out = self.fc3(out)
 
-        return x
+        return out
