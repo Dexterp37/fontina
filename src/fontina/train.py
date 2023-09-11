@@ -17,7 +17,7 @@ from fontina.augmentation_utils import (
 from fontina.augmented_dataset import AugmentedDataset
 
 from fontina.config import load_config
-from fontina.models.deepfont import DeepFont, DeepFontAutoencoder
+from fontina.models.deepfont import DeepFont
 from fontina.models.lightning_wrappers import DeepFontAutoencoderWrapper, DeepFontWrapper
 
 
@@ -103,19 +103,15 @@ def main():
     if train_autoencoder:
         model = DeepFontAutoencoderWrapper()
     else:
-        # Load the trained autoencoder.
-        checkpoint = torch.load(train_config["scae_checkpoint_file"])
-        autoenc_model = DeepFontAutoencoder()
-
-        # update keys by dropping `autoencoder.`
-        autoenc_weights = checkpoint["state_dict"]
-        for key in list(autoenc_weights):
-            autoenc_weights[key.replace("autoencoder.", "")] = autoenc_weights.pop(key)
-
-        autoenc_model.load_state_dict(autoenc_weights)
+        autoenc_wrapper = DeepFontAutoencoderWrapper.load_from_checkpoint(
+            train_config["scae_checkpoint_file"]
+        )
 
         model = DeepFontWrapper(
-            model=DeepFont(autoencoder=autoenc_model, num_classes=full_data_num_classes),
+            model=DeepFont(
+                autoencoder=autoenc_wrapper.autoencoder,
+                num_classes=full_data_num_classes,
+            ),
             num_classes=full_data_num_classes,
             learning_rate=train_config["learning_rate"],
         )
