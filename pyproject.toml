@@ -28,7 +28,8 @@ linting = [
     "flake8-bugbear==23.7.10",
     "mypy==1.4.1",
     "pytest==7.4.0",
-    "types-PyYAML",
+    "types-PyYAML==6.0.1",
+    "types-pillow==9.5.0",
 ]
 
 [tool.black]
@@ -43,6 +44,9 @@ exclude = '''
 )/
 '''
 
+[tool.mypy]
+exclude = "(build)/$"
+
 [[tool.mypy.overrides]]
-module = "trdg.generators.*"
+module = ["albumentations.*", "torchvision.*", "trdg.generators.*"]
 ignore_missing_imports = true
