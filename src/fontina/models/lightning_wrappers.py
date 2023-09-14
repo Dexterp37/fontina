@@ -8,14 +8,11 @@ from pytorch_lightning.utilities.grads import grad_norm
 
 
 class DeepFontAutoencoderWrapper(L.LightningModule):
-    def __init__(
-        self,
-        autoencoder_class: object = DeepFontAutoencoder,
-    ):
+    def __init__(self):
         super().__init__()
         # Saving hyperparameters of autoencoder
         self.save_hyperparameters()
-        self.autoencoder = autoencoder_class()
+        self.autoencoder = DeepFontAutoencoder()
         # Example input array needed for visualizing the graph of the network
         self.example_input_array = torch.zeros(2, 1, 105, 105)
 
@@ -58,9 +55,9 @@ class DeepFontWrapper(L.LightningModule):
         self.learning_rate = learning_rate
         self.model = model
         self.accuracy = Accuracy(task="multiclass", num_classes=num_classes, top_k=1)
-        self.eval_loss = []
-        self.eval_accuracy = []
-        self.test_accuracy = []
+        self.eval_loss: list[torch.Tensor] = []
+        self.eval_accuracy: list[torch.Tensor] = []
+        self.test_accuracy: list[torch.Tensor] = []
         self.example_input_array = torch.zeros(2, 1, 105, 105)
 
     def forward(self, x):
