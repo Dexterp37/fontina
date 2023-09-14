@@ -2,3 +2,5 @@
 max-line-length=90
 exclude=
     .venv*
+    build/*
+ignore=E203
