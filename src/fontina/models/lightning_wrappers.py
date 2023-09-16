@@ -49,7 +49,7 @@ class DeepFontAutoencoderWrapper(L.LightningModule):
 
 
 class DeepFontWrapper(L.LightningModule):
-    def __init__(self, model: DeepFont, num_classes: int, learning_rate: float):
+    def __init__(self, model: DeepFont, num_classes: int, learning_rate: float = 0.01):
         super().__init__()
 
         self.learning_rate = learning_rate
