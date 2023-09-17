@@ -33,6 +33,52 @@ def get_parser():
     return parser
 
 
+def load_and_split_data(train_config):
+    all_data = datasets.ImageFolder(
+        root=train_config["data_root"],
+        # Important: albumentation can't set grayscale and output only one
+        # channel, so do it here.
+        transform=transforms.Grayscale(num_output_channels=1),
+        target_transform=None,
+    )
+    full_data_num_classes = len(all_data.classes)
+
+    split_ratios = (
+        [
+            train_config["train_ratio"],
+            train_config["validation_ratio"],
+            train_config["test_ratio"],
+        ]
+        if train_config["run_test_cycle"]
+        else [
+            train_config["train_ratio"],
+            1.0 - train_config["train_ratio"],
+        ]
+    )
+    splits = torch.utils.data.random_split(all_data, split_ratios)
+
+    train_set_processed = AugmentedDataset(
+        splits[0], full_data_num_classes, get_deepfont_full_augmentations()
+    )
+    validation_set_processed = AugmentedDataset(
+        splits[1], full_data_num_classes, get_random_square_patch_augmentation()
+    )
+    test_set_processed = (
+        AugmentedDataset(
+            splits[2], full_data_num_classes, get_random_square_patch_augmentation()
+        )
+        if train_config["run_test_cycle"]
+        else None
+    )
+
+    return (
+        full_data_num_classes,
+        train_set_processed,
+        validation_set_processed,
+        test_set_processed,
+    )
+
+
 def main():
     args = get_parser().parse_args()
 
@@ -43,35 +89,16 @@ def main():
     if "fixed_seed" in train_config:
         L.seed_everything(train_config["fixed_seed"])
 
-    all_data = datasets.ImageFolder(
-        root=train_config["data_root"],
-        # Important: albumentation can't set grayscale and output only one
-        # channel, so do it here.
-        transform=transforms.Grayscale(num_output_channels=1),
-        target_transform=None,
-    )
-    full_data_num_classes = len(all_data.classes)
-
-    print(f"All data:\n{all_data}\n\nClasses/ids:\n{all_data.class_to_idx}")
-
-    train_set, test_set, val_set = torch.utils.data.random_split(
-        all_data, [0.8, 0.10, 0.10]
-    )
-
-    train_set_processed = AugmentedDataset(
-        train_set, full_data_num_classes, get_deepfont_full_augmentations()
-    )
-    test_set_processed = AugmentedDataset(
-        test_set, full_data_num_classes, get_random_square_patch_augmentation()
-    )
-    validation_set_processed = AugmentedDataset(
-        val_set, full_data_num_classes, get_random_square_patch_augmentation()
-    )
+    (
+        full_data_num_classes,
+        train_set_processed,
+        validation_set_processed,
+        test_set_processed,
+    ) = load_and_split_data(train_config)
 
     batch_size = train_config["batch_size"]
     num_workers = train_config["num_workers"] // 3
 
-    # num_workers must be 0 to avoid "process exited unexpectedly"
     train_loader = DataLoader(
         train_set_processed,
         batch_size=batch_size,
@@ -79,13 +106,6 @@ def main():
         shuffle=True,
         persistent_workers=True,
         pin_memory=True,
-    )
-    test_loader = DataLoader(
-        test_set_processed,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=False,
-        persistent_workers=True,
     )
     validation_loader = DataLoader(
         validation_set_processed,
@@ -139,6 +159,13 @@ def main():
 
     # Test the model
     if "run_test_cycle" in train_config and train_config["run_test_cycle"]:
+        test_loader = DataLoader(
+            test_set_processed,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=False,
+            persistent_workers=True,
+        )
         trainer.test(model, test_loader)
 
 
