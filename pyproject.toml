@@ -39,13 +39,14 @@ exclude = '''
     \.git
   | \.mypy_cache
   | \.venv
+  | assets
   | build
   | dist
 )/
 '''
 
 [tool.mypy]
-exclude = "(build)/$"
+exclude = "(assets|build)/$"
 
 [[tool.mypy.overrides]]
 module = ["albumentations.*", "torchvision.*", "trdg.generators.*"]
