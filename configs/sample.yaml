@@ -39,6 +39,16 @@ training:
   # purposes.
   # fixed_seed: 42
 
+  # The type of data source stored in the data root.
+  # It's one of:
+  # - "raw-images": the data root contains one directory
+  #   per font type, each having the samples coming from
+  #   that font.
+  # - "adobevfr": the data root contains the AdobeVFR in
+  #   BCF format, i.e. the 'VFR_real_test', 'VFR_syn_train'
+  #   and 'VFR_syn_val' directories.
+  dataset_type: "raw-images"
+
   # The root directory containing the data generated from the
   # synthetic image generation step.
   data_root: "outputs/font-images"

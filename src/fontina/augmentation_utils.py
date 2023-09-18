@@ -6,6 +6,14 @@ from albumentations.core.transforms_interface import ImageOnlyTransform
 from PIL import Image
 
 
+def resize_fixed_height(img: Image.Image, new_height: int = 105):
+    # From the paper: height is fixed to 105 pixels, width is scaled
+    # to keep aspect ratio.
+    width, height = img.size
+    new_width = round(new_height * width / height)
+    return img.resize((new_width, new_height), Image.LANCZOS)
+
+
 def split_patches_np(img, step, drop_last):
     height, width = img.shape
 
@@ -52,8 +60,12 @@ class PickRandomPatch(ImageOnlyTransform):
         # image into 105x105 boxes and pick one of the boxes.
         # Otherwise, we pick a random start coordinate and
         # build a box from there.
+
+        _, width = img.shape
+        if width <= 105:
+            return img
+
         if not self.constrained_patches:
-            _, width = img.shape
             start_x = np.random.randint(0, width - 105)
             return img[0:105, start_x : start_x + 105]
 
@@ -81,6 +93,9 @@ class VariableAspectRatio(ImageOnlyTransform):
         )
         return np.array(squeezed)
 
+    def get_transform_init_args_names(self):
+        return ("ratio_range",)
+
 
 class Squeezing(ImageOnlyTransform):
     """
@@ -100,7 +115,24 @@ class Squeezing(ImageOnlyTransform):
         squeezed = Image.fromarray(img).resize(
             (new_width, height), Image.Resampling.LANCZOS
         )
-        return np.array(squeezed)
+        return np.array(squeezed, dtype="uint8")
+
+    def get_transform_init_args_names(self):
+        return ("squeeze_ratio",)
+
+
+class ResizeHeight(ImageOnlyTransform):
+    """
+    Resize the image height keeping the aspect ratio.
+    """
+
+    def __init__(self, target_height: int, always_apply=False, p=1.0) -> None:
+        super(ResizeHeight, self).__init__(always_apply, p)
+        self.target_height = target_height
+
+    def apply(self, img, **params):
+        resized = resize_fixed_height(Image.fromarray(img), self.target_height)
+        return np.array(resized)
 
 
 def get_deepfont_base_augmentations() -> A.Compose:
@@ -130,7 +162,7 @@ def get_deepfont_feature_enhancement() -> A.Compose:
 def get_random_square_patch() -> A.Compose:
     return A.Sequential(
         [
-            PickRandomPatch(drop_last=True, always_apply=True),
+            PickRandomPatch(constrained_patches=False, always_apply=True),
             A.ToFloat(255, always_apply=True),
             ToTensorV2(),
         ]
@@ -142,6 +174,7 @@ def get_deepfont_full_augmentations() -> A.Compose:
         [
             A.Sequential(
                 [
+                    ResizeHeight(target_height=105, always_apply=True),
                     get_deepfont_base_augmentations(),
                     get_deepfont_feature_enhancement(),
                     PickRandomPatch(constrained_patches=False, always_apply=True),
@@ -156,8 +189,18 @@ def get_deepfont_full_augmentations() -> A.Compose:
 def get_random_square_patch_augmentation() -> A.Compose:
     return A.Compose(
         [
+            ResizeHeight(target_height=105, always_apply=True),
             # Testing still requires VAR and squeezing.
             get_deepfont_feature_enhancement(),
             get_random_square_patch(),
+        ]
+    )
+
+
+def get_test_augmentations(r) -> A.Compose:
+    return A.Sequential(
+        [
+            ResizeHeight(target_height=105, always_apply=True),
+            Squeezing(squeeze_ratio=r, always_apply=True),
         ]
     )

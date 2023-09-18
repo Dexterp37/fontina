@@ -5,8 +5,9 @@ import torch
 import torch.nn.functional as F
 
 from fontina.augmentation_utils import (
-    get_deepfont_feature_enhancement,
     get_random_square_patch,
+    get_test_augmentations,
+    resize_fixed_height,
 )
 
 from fontina.models.deepfont import DeepFont, DeepFontAutoencoder
@@ -39,14 +40,10 @@ def get_parser():
     return parser
 
 
-def predict(model: DeepFontWrapper, img):
-    # Apply feature enhancement.
-    enhancement_pipeline = get_deepfont_feature_enhancement()
-
-    # TODO: we need 3 different versions of the same sample and
-    # average the outputs (as required by the paper).
+def predict(model: DeepFontWrapper, img) -> torch.Tensor:
     all_soft_preds = []
     for _ in range(3):
+        enhancement_pipeline = get_test_augmentations(r=1.5 + np.random.rand() * 2)
         enhanced_img = enhancement_pipeline(image=np.asarray(img))["image"]
 
         patch_sampler = get_random_square_patch()
@@ -57,7 +54,7 @@ def predict(model: DeepFontWrapper, img):
         soft_preds = F.softmax(preds, dim=1)
         all_soft_preds.append(soft_preds)
 
-    return torch.cat(all_soft_preds).mean(0).argmax()
+    return torch.cat(all_soft_preds).mean(0)
 
 
 def main():
@@ -69,18 +66,14 @@ def main():
         num_classes=args.num_classes,
     )
 
-    def resize_fixed_height(img, new_height=105):
-        # From the paper: height is fixed to 105 pixels, width is scaled
-        # to keep aspect ratio.
-        width, height = img.size
-        new_width = round(new_height * width / height)
-        return img.resize((new_width, new_height), PIL.Image.LANCZOS)
-
     raw_img = PIL.Image.open(args.input).convert("L")
     img = resize_fixed_height(raw_img)
 
     predicted_class = predict(model, img)
-    print(f"Final Predicted label {predicted_class}")
+
+    print(f"Mean softmax vector:\n{predicted_class}")
+    print(f"Final Predicted label: {predicted_class.argmax()}")
+    print(f"Sorted labels: {predicted_class.argsort(dim=0, descending=True)}")
 
 
 if __name__ == "__main__":

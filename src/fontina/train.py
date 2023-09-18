@@ -10,6 +10,7 @@ import torch
 
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from fontina.adobevfr_dataset import AdobeVFRDataset
 from fontina.augmentation_utils import (
     get_deepfont_full_augmentations,
     get_random_square_patch_augmentation,
@@ -18,6 +19,7 @@ from fontina.augmented_dataset import AugmentedDataset
 
 from fontina.config import load_config
 from fontina.models.deepfont import DeepFont
+from fontina.models.lightning_generate_callback import GenerateCallback
 from fontina.models.lightning_wrappers import DeepFontAutoencoderWrapper, DeepFontWrapper
 
 
@@ -29,6 +31,13 @@ def get_parser():
         metavar="CONFIG-FILE",
         help="path to the configuration file",
         required=True,
+    )
+    parser.add_argument(
+        "-r",
+        "--resume-from",
+        metavar="CHECKPOINT-FILE",
+        help="path to the checkpoint file",
+        required=False,
     )
     return parser
 
@@ -79,6 +88,48 @@ def load_and_split_data(train_config):
     )
 
 
+def load_adobevfr_dataset(train_config):
+    all_train_data = AdobeVFRDataset(
+        f"{train_config['data_root']}/VFR_syn_train",
+        "train",
+        get_deepfont_full_augmentations(),
+    )
+    # Although the AdobeVFR dataset readme says that VFR_syn_val contains
+    # the validation for the same classes as VFR_syn_train, that doens't
+    # seem to be the case: the former contains 2383 classes, the latter
+    # 4383. Instead of using it, let's split the rain set.
+    splits = torch.utils.data.random_split(all_train_data, [0.95, 0.05])
+
+    train_set_processed = AugmentedDataset(splits[0], all_train_data.num_labels, None)
+    validation_set_processed = AugmentedDataset(
+        splits[1], all_train_data.num_labels, None
+    )
+
+    """
+    validation_set_processed = AdobeVFRDataset(
+        f"{train_config['data_root']}/VFR_syn_val",
+        "val",
+        get_random_square_patch_augmentation(),
+    )
+    """
+    test_set_processed = (
+        AdobeVFRDataset(
+            f"{train_config['data_root']}/VFR_real_test",
+            "vfr_large",
+            get_random_square_patch_augmentation(),
+        )
+        if train_config["run_test_cycle"]
+        else None
+    )
+
+    return (
+        all_train_data.num_labels,
+        train_set_processed,
+        validation_set_processed,
+        test_set_processed,
+    )
+
+
 def main():
     args = get_parser().parse_args()
 
@@ -94,10 +145,14 @@ def main():
         train_set_processed,
         validation_set_processed,
         test_set_processed,
-    ) = load_and_split_data(train_config)
+    ) = (
+        load_and_split_data(train_config)
+        if train_config["dataset_type"] == "raw-images"
+        else load_adobevfr_dataset(train_config)
+    )
 
     batch_size = train_config["batch_size"]
-    num_workers = train_config["num_workers"] // 3
+    num_workers = max(train_config["num_workers"] // 3, 1)
 
     train_loader = DataLoader(
         train_set_processed,
@@ -136,25 +191,44 @@ def main():
             learning_rate=train_config["learning_rate"],
         )
 
-    # train model
-    trainer = L.Trainer(
-        gradient_clip_algorithm="norm",
-        gradient_clip_val=1.0,
-        max_epochs=train_config["epochs"],
-        callbacks=[
-            EarlyStopping(monitor="val_loss", mode="min"),
-            LearningRateMonitor(logging_interval="step"),
-            ModelCheckpoint(
-                dirpath=train_config["output_dir"],
-                save_top_k=2,
-                monitor="val_loss",
-                filename="deepfont-{epoch:02d}-{val_loss:.4f}-{val_accuracy:.2f}",
+    # Define the set of callbacks to use during the training process.
+    training_callbacks = [
+        EarlyStopping(monitor="val_loss", mode="min"),
+        LearningRateMonitor(logging_interval="step"),
+        ModelCheckpoint(
+            dirpath=train_config["output_dir"],
+            save_top_k=2,
+            monitor="val_loss",
+            filename="deepfont-{epoch:02d}-{val_loss:.4f}-{val_accuracy:.4f}",
+            save_last=True,
+        ),
+        ModelSummary(-1),
+    ]
+
+    if train_autoencoder:
+        # When training the autoencoder,
+        sample_index = 10 % len(train_set_processed)
+        training_callbacks.append(
+            GenerateCallback(
+                train_set_processed[sample_index][0].unsqueeze(0), every_n_epochs=5
             ),
-            ModelSummary(-1),
-        ],
+        )
+
+    trainer = L.Trainer(
+        # If ever doing gradient clipping here, remember that this
+        # has an effect on training: it will take likely twice as
+        # long to get to the same accuracy!
+        # gradient_clip_algorithm="norm",
+        # gradient_clip_val=1.0,
+        max_epochs=train_config["epochs"],
+        callbacks=training_callbacks,
     )
+
     trainer.fit(
-        model=model, train_dataloaders=train_loader, val_dataloaders=validation_loader
+        model=model,
+        train_dataloaders=train_loader,
+        val_dataloaders=validation_loader,
+        ckpt_path=args.resume_from if args.resume_from else None,
     )
 
     # Test the model
