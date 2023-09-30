@@ -166,3 +166,10 @@ directory as follows:
 ```bash
 tensorboard --logdir=lightning_logs
 ```
+
+### Inference
+Once training is complete, the resulting model can be used to run inference.
+
+```bash
+python src/fontina/predict.py -w "outputs/models/mymodel-full/best_checkpoint.ckpt" -i "assets/images/test.png"
+```

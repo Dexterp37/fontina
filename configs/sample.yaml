@@ -39,6 +39,16 @@ training:
   # purposes.
   # fixed_seed: 42
 
+  # The type of data source stored in the data root.
+  # It's one of:
+  # - "raw-images": the data root contains one directory
+  #   per font type, each having the samples coming from
+  #   that font.
+  # - "adobevfr": the data root contains the AdobeVFR in
+  #   BCF format, i.e. the 'VFR_real_test', 'VFR_syn_train'
+  #   and 'VFR_syn_val' directories.
+  dataset_type: "raw-images"
+
   # The root directory containing the data generated from the
   # synthetic image generation step.
   data_root: "outputs/font-images"
@@ -59,6 +69,19 @@ training:
 
   epochs: 20
 
+  # The ratio to use for splitting the samples in the data
+  # root into train, validation and test sets.
+  # Note that the validation set is used during for validating
+  # during the training cycle, while the testing set, if
+  # provided, is used after the training phase is complete.
+  train_ratio: 0.8
+  # The following ratios are meaningful only if run_test_cycle
+  # is enabled.
+  validation_ratio: 0.1
+  test_ratio: 0.1
+
   # Whether or not to use a fraction of the data to run a
-  # test cycle on the trained model.
+  # test cycle on the trained model. If this is disabled
+  # then only the train ratio will be used: the validation
+  # ratio will be automatically computed.
   run_test_cycle: True
