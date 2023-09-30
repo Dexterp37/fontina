@@ -1,5 +1,6 @@
 import albumentations as A
 import numpy as np
+import numpy.typing as npt
 
 from albumentations.pytorch import ToTensorV2
 from albumentations.core.transforms_interface import ImageOnlyTransform
@@ -14,7 +15,7 @@ def resize_fixed_height(img: Image.Image, new_height: int = 105):
     return img.resize((new_width, new_height), Image.LANCZOS)
 
 
-def split_patches_np(img, step, drop_last):
+def split_patches_np(img: npt.NDArray[np.uint8], step: int, drop_last: bool):
     height, width = img.shape
 
     patches = []
@@ -197,7 +198,7 @@ def get_random_square_patch_augmentation() -> A.Compose:
     )
 
 
-def get_test_augmentations(r) -> A.Compose:
+def get_test_augmentations(r: float) -> A.Compose:
     return A.Sequential(
         [
             ResizeHeight(target_height=105, always_apply=True),

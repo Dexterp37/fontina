@@ -32,6 +32,9 @@ linting = [
     "types-pillow==9.5.0",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.black]
 line-length = 90
 exclude = '''
