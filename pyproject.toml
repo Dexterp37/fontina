@@ -21,6 +21,10 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
 
+[project.scripts]
+fontina-train = "fontina.train:main"
+fontina-predict = "fontina.predict:main"
+
 [project.urls]
 "Homepage" = "https://github.com/Dexterp37/fontina"
 "Bug Tracker" = "https://github.com/Dexterp37/fontina/issues"
