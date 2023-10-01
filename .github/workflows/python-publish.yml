@@ -30,7 +30,8 @@ jobs:
         pip install build
     - name: Build package
       run: python -m build
-    - name: Publish package distributions to TestPyPI
+    - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@8ef2b3d46c9ecba901fb2ae21d98e322c4089c4e
-      with:
-        repository-url: https://test.pypi.org/legacy/
+      # Uncomment the following two lines to upload to TestPyPI
+      # with:
+      #  repository-url: https://test.pypi.org/legacy/
