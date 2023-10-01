@@ -1,6 +1,5 @@
 [project]
 name = "fontina"
-version = "0.0.1"
 description = "Visual font recognition (VFR) library"
 authors = [{ name = "Alessio Placitelli", email = "a.placitelli@a2p.it" }]
 dependencies = [
@@ -17,6 +16,7 @@ dependencies = [
     "torch==2.0.1",
     "torchvision==0.15.2",
 ]
+dynamic = ["version"]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
@@ -41,7 +41,7 @@ linting = [
 ]
 
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = ["setuptools>=65.0", "setuptools_scm[toml]>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -50,6 +50,9 @@ include-package-data = false
 [tool.setuptools.packages.find]
 where = ["src"]
 exclude = ["assets*", "tests*"]
+
+[tool.setuptools_scm]
+# It's fine for this section to be empty.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
