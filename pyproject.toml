@@ -21,6 +21,14 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
 
+[project.scripts]
+fontina-train = "fontina.train:main"
+fontina-predict = "fontina.predict:main"
+
+[project.urls]
+"Homepage" = "https://github.com/Dexterp37/fontina"
+"Bug Tracker" = "https://github.com/Dexterp37/fontina/issues"
+
 [project.optional-dependencies]
 linting = [
     "black==23.7.0",
@@ -32,7 +40,18 @@ linting = [
     "types-pillow==9.5.0",
 ]
 
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+exclude = ["assets*", "tests*"]
+
 [tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+pythonpath = "src"
 testpaths = ["tests"]
 
 [tool.black]
