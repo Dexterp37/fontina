@@ -50,6 +50,8 @@ include-package-data = false
 exclude = ["assets*", "tests*"]
 
 [tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+pythonpath = "src"
 testpaths = ["tests"]
 
 [tool.black]
