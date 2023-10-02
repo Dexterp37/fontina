@@ -31,7 +31,7 @@ class AdobeVFRDataset(Dataset):
         x = self.transform(image=raw_image)["image"] if self.transform else raw_image
         # We need to cast to `torch.long` to prevent errors such as
         # "nll_loss_forward_reduce_cuda_kernel_2d_index" not implemented for 'Int'.
-        return x, torch.tensor(self.labels[index], dtype=torch.long)
+        return x, torch.as_tensor(self.labels[index], dtype=torch.long)
 
     def __len__(self):
         return len(self._bcf_offsets) - 1
