@@ -7,7 +7,7 @@ dependencies = [
     "trdg==1.8.0",
     # We need to force the pillow version because of the use
     # of removed APIs in trdg 1.8.0 (e.g. `ImageFont.getsize`).
-    "pillow==9.5.0",
+    "pillow==10.0.1",
     "pytorch-lightning[extra]==2.0.8",
     "pyyaml==6.0.1",
     "rstr==3.2.1",
