@@ -1,18 +1,17 @@
 import fontina.augmentation_utils as au
 import numpy as np
-import PIL
 
 
 def test_resize_fixed_height():
-    test_img = PIL.Image.fromarray(np.ones((70, 100), dtype=np.uint8))
+    test_img = np.ones((70, 100), dtype=np.uint8)
     resized = au.resize_fixed_height(test_img, new_height=105)
 
     # Check for the expected height.
-    assert resized.size[1] == 105
+    assert resized.shape[0] == 105
 
     # Check that the ratio of the source image is kept.
     assert np.isclose(
-        test_img.size[0] / test_img.size[1], resized.size[0] / resized.size[1]
+        test_img.shape[0] / test_img.shape[1], resized.shape[0] / resized.shape[1]
     )
 
 

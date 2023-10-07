@@ -67,7 +67,7 @@ def main():
     )
 
     raw_img = PIL.Image.open(args.input).convert("L")
-    img = resize_fixed_height(raw_img)
+    img = resize_fixed_height(np.asarray(raw_img))
 
     predicted_class = predict(model, img)
 
