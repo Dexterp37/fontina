@@ -15,7 +15,7 @@ from fontina.models.lightning_wrappers import DeepFontWrapper
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Fontina detect")
+    parser = argparse.ArgumentParser(description="Fontina predict")
     parser.add_argument(
         "-w",
         "--weights",
