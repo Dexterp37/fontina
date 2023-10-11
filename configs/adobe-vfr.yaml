@@ -1,0 +1,88 @@
+---
+# This section of the configuration is used to control
+# the generation of the synthetic image data for the
+# visual font recognition task.
+fonts:
+  # Whether or not to enable random spacing between characters.
+  random_character_spacing: False
+
+  # The regular expression to use to generate the text
+  # in the synthetic image samples.
+  regex_template: '[A-Z0-9]{5,10} [A-Z0-9]{3,7}'
+
+  # The path to the directory containing background images.
+  # If provided, images in this directory will be used as
+  # background for the generated text. If omitted, images
+  # will have a white background.
+  backgrounds_path: "assets/backgrounds"
+
+  # The number of samples to generate for each font.
+  samples_per_font: 50
+
+  classes:
+    - name: Test Font
+      path: "assets/fonts/test/Test.ttf"
+    - name: Other Test Font
+      path: "assets/fonts/test2/Test2.ttf"
+
+# This section controls the training configuration for the model.
+training:
+  # TODO: When training the autoencoder, use the real images.
+  only_autoencoder: False
+
+  # The path to the pre-trained checkpoint to use for the
+  # stacked autoencoders within the DeepFont-like model. Setting
+  # this property skip training the SCAE.
+  scae_checkpoint_file: "outputs/adobevfr/final/v82-autoenc-epoch=10-val_loss=0.0019-val_accuracy=0.0000.ckpt"
+
+  # Whether or not to use a fixed random seed for training. Note
+  # that this is useful for creating reproducible runs for debugging
+  # purposes.
+  # fixed_seed: 42
+
+  # The type of data source stored in the data root.
+  # It's one of:
+  # - "raw-images": the data root contains one directory
+  #   per font type, each having the samples coming from
+  #   that font.
+  # - "adobevfr": the data root contains the AdobeVFR in
+  #   BCF format, i.e. the 'VFR_real_test', 'VFR_syn_train'
+  #   and 'VFR_syn_val' directories.
+  dataset_type: "adobevfr"
+
+  # The root directory containing the data generated from the
+  # synthetic image generation step.
+  data_root: "assets/AdobeVFR"
+
+  # The directory that will contain the model checkpoints.
+  output_dir: "outputs/adobevfr/full"
+
+  # The number of workers to use for the data loaders. See
+  # the PyTorch documentation here:
+  # https://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader
+  num_workers: 12
+
+  # The size of the batch to use for training.
+  batch_size: 128
+
+  # The initial learning rate to use for training.
+  learning_rate: 0.01
+
+  epochs: 20
+
+  # The ratio to use for splitting the samples in the data
+  # root into train, validation and test sets.
+  # Note that the validation set is used during for validating
+  # during the training cycle, while the testing set, if
+  # provided, is used after the training phase is complete.
+  train_ratio: 0.8
+  # The following ratios are meaningful only if run_test_cycle
+  # is enabled.
+  validation_ratio: 0.1
+  test_ratio: 0.1
+
+  # Whether or not to use a fraction of the data to run a
+  # test cycle on the trained model. If this is disabled
+  # then only the train ratio will be used: the validation
+  # ratio will be automatically computed.
+  run_test_cycle: True
