@@ -57,6 +57,30 @@ def test_pick_random_patch_constrained():
     aug = au.PickRandomPatch(constrained_patches=True, always_apply=True)
     result = aug(image=test_img)["image"]
 
+    assert np.all(np.equal(result.shape, [105, 105]))
+
     # It's either a full black or a full white patch, as we're constraining
     # the random choice into non-random patches.
     assert np.all(result == 255) or np.all(result == 0)
+
+
+def test_pick_random_small_width():
+    # Craft an image with one patch: its width being less than 105.
+    test_img = np.ones((105, 80), dtype=np.uint8) * 255
+
+    aug = au.PickRandomPatch(constrained_patches=True, always_apply=True)
+    result = aug(image=test_img)["image"]
+
+    # The returned patch must still be 105x105.
+    assert np.all(np.equal(result.shape, [105, 105]))
+
+
+def test_pick_random_exact_width():
+    # Craft an image with one patch: its width being exactly 105.
+    test_img = np.ones((105, 105), dtype=np.uint8) * 255
+
+    aug = au.PickRandomPatch(constrained_patches=True, always_apply=True)
+    result = aug(image=test_img)["image"]
+
+    # The returned patch must still be 105x105.
+    assert np.all(np.equal(result.shape, [105, 105]))

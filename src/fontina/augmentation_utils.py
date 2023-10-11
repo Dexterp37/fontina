@@ -64,7 +64,11 @@ class PickRandomPatch(ImageOnlyTransform):
 
         _, width = img.shape
         if width <= 105:
-            return img
+            return np.append(
+                img,
+                np.full((105, 105 - width), 255, dtype="uint8"),
+                axis=1,
+            )
 
         if not self.constrained_patches:
             start_x = np.random.randint(0, width - 105)
@@ -194,10 +198,10 @@ def get_random_square_patch_augmentation() -> A.Compose:
     )
 
 
-def get_test_augmentations(r: float) -> A.Compose:
+def get_test_augmentations(squeeze_ratio: float) -> A.Compose:
     return A.Sequential(
         [
             ResizeHeight(target_height=105, always_apply=True),
-            Squeezing(squeeze_ratio=r, always_apply=True),
+            Squeezing(squeeze_ratio=squeeze_ratio, always_apply=True),
         ]
     )
