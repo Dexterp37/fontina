@@ -4,7 +4,7 @@ Recognition and doing inference with them.
 
 ## Feature highlights
 
-* [DeepFont-like network architecture](https://arxiv.org/pdf/1507.03196v1.pdf)
+* DeepFont-like network architecture. See [​​Z. Wang, J. Yang, H. Jin, E. Shechtman, A. Agarwala, J. Brandt and T. Huang, “DeepFont: Identify Your Font from An Image”, In Proceedings of ACM International Conference on Multimedia (ACM MM) , 2015](https://arxiv.org/abs/1507.03196)
 * Configuration-based synthetic dataset generation
 * Configuration-based model training via [PyTorch Lightning](https://lightning.ai/pytorch-lightning)
 * Supports training and inference on Linux, MacOS and Windows.
@@ -47,7 +47,7 @@ make test
 
 ### Generating a synthetic dataset
 If needed, the model can be trained on synthetic data. `fontina` provides a synthetic
-dataset generator that follows part of the recommendations from the [DeepFont paper](https://arxiv.org/pdf/1507.03196v1.pdf)
+dataset generator that follows part of the recommendations from the [DeepFont paper](https://arxiv.org/abs/1507.03196)
 to make the synthetic data look closer to the real data. To use the generator:
 
 1. Make a copy of `configs/sample.yaml`, e.g. `configs/mymodel.yaml`
@@ -75,7 +75,7 @@ fonts:
 3. Run the generation:
 
 ```bash
-python src/fontina/generate.py -c configs/mymodel.yaml -o outputs/font-images/mymodel
+fontina-generate -c configs/mymodel.yaml -o outputs/font-images/mymodel
 ```
 
 After this completes, there should be one directory per configured font in `outputs/font-images/mymodel`.
@@ -124,7 +124,7 @@ python src/fontina/train.py -c configs/mymodel.yaml
 ```
 
 #### Part 2 - Supervised training
-1. Open `configs/mymodel.yaml` and tweak the `training` section:
+1. Open `configs/mymodel.yaml` (or create a new one!) and tweak the `training` section:
 
 ```yaml
 training:
@@ -155,7 +155,7 @@ training:
 2. Then run the training with:
 
 ```bash
-python src/fontina/train.py -c configs/mymodel.yaml
+fontina-train -c configs/mymodel.yaml
 ```
 
 ### **(Optional)** - Monitor performance using TensorBoard
@@ -171,5 +171,31 @@ tensorboard --logdir=lightning_logs
 Once training is complete, the resulting model can be used to run inference.
 
 ```bash
-python src/fontina/predict.py -w "outputs/models/mymodel-full/best_checkpoint.ckpt" -i "assets/images/test.png"
+fontina-predict -n 6 -w "outputs/models/mymodel-full/best_checkpoint.ckpt" -i "assets/images/test.png"
 ```
+
+## AdobeVFR Pre-trained model
+The AdobeVFR dataset is currently available for download [at Dropbox, here](https://www.dropbox.com/sh/o320sowg790cxpe/AADDmdwQ08GbciWnaC20oAmna?dl=0). The license for using and distributing the dataset is available [here](https://www.dropbox.com/sh/o320sowg790cxpe/AADDmdwQ08GbciWnaC20oAmna?dl=0&preview=license.txt), which cites:
+
+> This dataset ('Licensed Material') is made available to the scientific community for non-commercial research purposes such as academic research, teaching, scientific publications or personal experimentation.
+
+The model, being trained on that dataset, retains the same spirit and the same license applies: the release model can only be used for non-commercial purposes.
+
+### How to train
+
+1. Download the dataset to `assets/AdobeVFR`
+2. Unpack `assets/AdobeVFR/Raw Image/VFR_real_u/scrape-wtf-new.zip` in that directory so that the `assets/AdobeVFR/Raw Image/VFR_real_u/scrape-wtf-new/` path exists
+3. Run `fontina-train -c configs/adobe-vfr-autoencoder.yaml`. This will take a long while but progress can be checked with Tensorboard (see the previous sections) during training
+4. Change `configs/adobe-vfr.yaml` so that `scae_checkpoint_file` points to the best checkpoint from step (3).
+5. Run `fontina-train -c configs/adobe-vfr.yaml`. This will take a long while (but less than the unsupervised training round)
+
+### Downloading the models
+While only the full model is needed, the stand-alone autonencoder model is being released as well.
+
+* Stand-alone autoencoder model: [Google Drive](https://drive.google.com/file/d/107Ontyg2FGxOKvhE7KM7HSaJ1Wn2Merr/view?usp=sharing)
+* Full model: [Google Drive](https://drive.google.com/file/d/1Fw-bjmapCXe0aCiYvOyGLmYocZDvmptK/view?usp=drive_link)
+
+> **Note**
+The pre-trained model achieves a validation loss of 0.3523, with an accuracy of 0.8855 after 14 epochs.
+Unfortunately the test performance on `VFR_real_test` is much worse, with a top-1 accuracy of 0.05.
+I'm releasing the model in the hope that somebody could help me fixing this 😊😅
