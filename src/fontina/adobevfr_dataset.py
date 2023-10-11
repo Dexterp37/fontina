@@ -1,8 +1,8 @@
-import numpy as np
+import cv2
 import io
+import numpy as np
 import torch
 
-from PIL import Image
 from torch.utils.data import Dataset
 
 
@@ -26,12 +26,15 @@ class AdobeVFRDataset(Dataset):
 
     def __getitem__(self, index):
         binary_image = self._get_bcf_entry_by_index(index)
-        pil_image = Image.open(io.BytesIO(binary_image)).convert("L")
-        raw_image = np.array(pil_image, dtype="uint8")
+        image_as_array = np.asarray(
+            bytearray(io.BytesIO(binary_image).read()), dtype=np.uint8
+        )
+        cv2image = cv2.imdecode(image_as_array, cv2.IMREAD_GRAYSCALE)
+        raw_image = np.array(cv2image, dtype="uint8")
         x = self.transform(image=raw_image)["image"] if self.transform else raw_image
         # We need to cast to `torch.long` to prevent errors such as
         # "nll_loss_forward_reduce_cuda_kernel_2d_index" not implemented for 'Int'.
-        return x, torch.tensor(self.labels[index], dtype=torch.long)
+        return x, torch.as_tensor(self.labels[index], dtype=torch.long)
 
     def __len__(self):
         return len(self._bcf_offsets) - 1

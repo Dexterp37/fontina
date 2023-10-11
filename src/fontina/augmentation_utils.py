@@ -1,18 +1,18 @@
 import albumentations as A
+import cv2
 import numpy as np
 import numpy.typing as npt
 
 from albumentations.pytorch import ToTensorV2
 from albumentations.core.transforms_interface import ImageOnlyTransform
-from PIL import Image
 
 
-def resize_fixed_height(img: Image.Image, new_height: int = 105):
+def resize_fixed_height(img: npt.NDArray[np.uint8], new_height: int = 105):
     # From the paper: height is fixed to 105 pixels, width is scaled
     # to keep aspect ratio.
-    width, height = img.size
+    height, width = img.shape[:2]
     new_width = round(new_height * width / height)
-    return img.resize((new_width, new_height), Image.LANCZOS)
+    return cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
 
 
 def split_patches_np(img: npt.NDArray[np.uint8], step: int, drop_last: bool):
@@ -23,7 +23,7 @@ def split_patches_np(img: npt.NDArray[np.uint8], step: int, drop_last: bool):
         patches.append(img[0:height, x : x + step])
 
     # Fixup the last patch instead of dropping it because
-    # its width is smaller than 105. When cropping with PIL and
+    # its width is smaller than 105. When cropping and
     # the patch is smaller than the needed area, it gets filled
     # with black pixels. We should recolor them instead of discarding.
     available_width = width % step
@@ -64,7 +64,11 @@ class PickRandomPatch(ImageOnlyTransform):
 
         _, width = img.shape
         if width <= 105:
-            return img
+            return np.append(
+                img,
+                np.full((105, 105 - width), 255, dtype="uint8"),
+                axis=1,
+            )
 
         if not self.constrained_patches:
             start_x = np.random.randint(0, width - 105)
@@ -89,9 +93,7 @@ class VariableAspectRatio(ImageOnlyTransform):
         height, width = img.shape
         ratio = np.random.uniform(low=self.ratio_range[0], high=self.ratio_range[1])
         new_width = round(width * ratio)
-        squeezed = Image.fromarray(img).resize(
-            (new_width, height), Image.Resampling.LANCZOS
-        )
+        squeezed = cv2.resize(img, (new_width, height), cv2.INTER_LANCZOS4)
         return np.array(squeezed)
 
     def get_transform_init_args_names(self):
@@ -113,9 +115,7 @@ class Squeezing(ImageOnlyTransform):
     def apply(self, img, **params):
         height, width = img.shape
         new_width = round(height * self.squeeze_ratio)
-        squeezed = Image.fromarray(img).resize(
-            (new_width, height), Image.Resampling.LANCZOS
-        )
+        squeezed = cv2.resize(img, (new_width, height), cv2.INTER_LANCZOS4)
         return np.array(squeezed, dtype="uint8")
 
     def get_transform_init_args_names(self):
@@ -132,7 +132,7 @@ class ResizeHeight(ImageOnlyTransform):
         self.target_height = target_height
 
     def apply(self, img, **params):
-        resized = resize_fixed_height(Image.fromarray(img), self.target_height)
+        resized = resize_fixed_height(img, self.target_height)
         return np.array(resized)
 
 
@@ -198,10 +198,10 @@ def get_random_square_patch_augmentation() -> A.Compose:
     )
 
 
-def get_test_augmentations(r: float) -> A.Compose:
+def get_test_augmentations(squeeze_ratio: float) -> A.Compose:
     return A.Sequential(
         [
             ResizeHeight(target_height=105, always_apply=True),
-            Squeezing(squeeze_ratio=r, always_apply=True),
+            Squeezing(squeeze_ratio=squeeze_ratio, always_apply=True),
         ]
     )

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from torch.utils.data import Dataset
 
@@ -11,9 +12,13 @@ class AugmentedDataset(Dataset):
         self.transform = transform
 
     def __getitem__(self, index):
-        raw_image = np.asarray(self.dataset[index][0])
-        x = self.transform(image=raw_image)["image"] if self.transform else raw_image
-        return x, self.dataset[index][1]
+        raw_image = self.dataset[index][0]
+        x = (
+            self.transform(image=np.asarray(raw_image))["image"]
+            if self.transform
+            else raw_image
+        )
+        return x, torch.as_tensor(self.dataset[index][1], dtype=torch.long)
 
     def __len__(self):
         return len(self.dataset)

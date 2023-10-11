@@ -15,7 +15,7 @@ from fontina.models.lightning_wrappers import DeepFontWrapper
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Fontina detect")
+    parser = argparse.ArgumentParser(description="Fontina predict")
     parser.add_argument(
         "-w",
         "--weights",
@@ -43,7 +43,9 @@ def get_parser():
 def predict(model: DeepFontWrapper, img) -> torch.Tensor:
     all_soft_preds = []
     for _ in range(3):
-        enhancement_pipeline = get_test_augmentations(r=1.5 + np.random.rand() * 2)
+        enhancement_pipeline = get_test_augmentations(
+            squeeze_ratio=np.random.uniform(low=1.5, high=3.5)
+        )
         enhanced_img = enhancement_pipeline(image=np.asarray(img))["image"]
 
         patch_sampler = get_random_square_patch()
@@ -67,7 +69,7 @@ def main():
     )
 
     raw_img = PIL.Image.open(args.input).convert("L")
-    img = resize_fixed_height(raw_img)
+    img = resize_fixed_height(np.asarray(raw_img))
 
     predicted_class = predict(model, img)
 
