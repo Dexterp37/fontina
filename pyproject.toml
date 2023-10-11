@@ -22,6 +22,7 @@ readme = "README.md"
 license = { text = "MIT" }
 
 [project.scripts]
+fontina-generate = "fontina.generate:main"
 fontina-train = "fontina.train:main"
 fontina-predict = "fontina.predict:main"
 
